@@ -1,0 +1,377 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P1 - PID Playground</title>
+<link rel="stylesheet" href="../shared.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<style>
+body { margin:0; padding:20px; background:#0b1220; color:#e5e7eb; font-family:Arial,sans-serif; }
+.container { max-width:1150px; margin:auto; }
+h1,h2 { color:#f8fafc; }
+.subtitle { color:#94a3b8; margin-bottom:24px; }
+.card { background:#172033; border:1px solid #334155; border-radius:12px; padding:18px; margin-bottom:18px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; }
+label { display:block; margin:12px 0 6px; color:#cbd5e1; }
+input,select { width:100%; box-sizing:border-box; padding:9px; border-radius:7px; border:1px solid #475569; background:#0f172a; color:white; }
+input[type=range] { padding:0; }
+button { background:#2563eb; color:white; border:0; padding:10px 15px; border-radius:8px; cursor:pointer; margin:5px 4px 5px 0; }
+button:hover { background:#1d4ed8; }
+.metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+.metric { background:#0f172a; padding:14px; border-radius:9px; border:1px solid #334155; }
+.metric span { display:block; color:#94a3b8; font-size:13px; }
+.metric strong { display:block; font-size:22px; margin-top:8px; color:#60a5fa; }
+.plot { width:100%; height:350px; }
+.value { color:#60a5fa; font-weight:bold; }
+.note { color:#94a3b8; font-size:13px; line-height:1.6; }
+.status { padding:12px; border-radius:8px; margin-top:10px; background:#0f172a; }
+.hidden { display:none; }
+.diagram { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; padding:18px 0; }
+.block { background:#1e3a5f; border:1px solid #3b82f6; border-radius:8px; padding:13px; text-align:center; }
+.arrow { color:#60a5fa; font-size:22px; }
+@media(max-width:600px) { body {padding:10px;} .plot {height:290px;} }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>PID Control Playground</h1>
+<p class="subtitle">ENCS4380 - Homework 2 | Module P1</p>
+
+<div class="card">
+<h2>1. Closed-Loop System</h2>
+<div class="diagram">
+  <div class="block">Setpoint<br><b>r(t)</b></div>
+  <div class="arrow">→</div>
+  <div class="block">PID Controller<br><b>P + I + D</b></div>
+  <div class="arrow">→</div>
+  <div class="block">Plant<br><b>G(s)</b></div>
+  <div class="arrow">→</div>
+  <div class="block">Output<br><b>y(t)</b></div>
+</div>
+<p class="note">
+The output is fed back and compared with the setpoint.
+The controller uses the error to calculate the control signal.
+</p>
+</div>
+
+<div class="grid">
+
+<div class="card">
+<h2>2. Plant Settings</h2>
+
+<label>Plant Type</label>
+<select id="plantType" onchange="updatePlantFields()">
+<option value="first">First-Order Plant</option>
+<option value="second">Second-Order Plant</option>
+</select>
+
+<div id="firstFields">
+<label>Plant Gain K: <span class="value" id="kVal">1.00</span></label>
+<input id="K" type="range" min="0.2" max="3" step="0.1" value="1" oninput="showValue('K','kVal')">
+
+<label>Time Constant τ (seconds): <span class="value" id="tauVal">1.00</span></label>
+<input id="tau" type="range" min="0.2" max="10" step="0.1" value="1" oninput="showValue('tau','tauVal')">
+</div>
+
+<div id="secondFields" class="hidden">
+<label>Mass m: <span class="value" id="mVal">1.00</span></label>
+<input id="mass" type="range" min="0.5" max="5" step="0.1" value="1" oninput="showValue('mass','mVal')">
+
+<label>Damping b: <span class="value" id="bVal">2.00</span></label>
+<input id="damping" type="range" min="0.2" max="20" step="0.1" value="2" oninput="showValue('damping','bVal')">
+
+<label>Spring Constant k: <span class="value" id="springVal">4.00</span></label>
+<input id="spring" type="range" min="0.5" max="20" step="0.1" value="4" oninput="showValue('spring','springVal')">
+</div>
+
+<label>Setpoint: <span class="value" id="spVal">1.00</span></label>
+<input id="setpoint" type="range" min="0.2" max="3" step="0.1" value="1" oninput="showValue('setpoint','spVal')">
+</div>
+
+<div class="card">
+<h2>3. PID Controller</h2>
+
+<label>Proportional Gain Kp: <span class="value" id="kpVal">9.00</span></label>
+<input id="kp" type="range" min="0" max="30" step="0.1" value="9" oninput="showValue('kp','kpVal')">
+
+<label>Integral Gain Ki: <span class="value" id="kiVal">0.00</span></label>
+<input id="ki" type="range" min="0" max="20" step="0.1" value="0" oninput="showValue('ki','kiVal')">
+
+<label>Derivative Gain Kd: <span class="value" id="kdVal">0.00</span></label>
+<input id="kd" type="range" min="0" max="10" step="0.1" value="0" oninput="showValue('kd','kdVal')">
+
+<label>Control Signal Limit (±)</label>
+<input id="limit" type="number" min="0.1" value="100" step="1">
+
+<p class="note">The control signal is limited to prevent the actuator from receiving an unlimited command.</p>
+
+<button onclick="simulate()">Run Simulation</button>
+<button onclick="resetValidation()">Load P-only Validation</button>
+</div>
+
+</div>
+
+<div class="card">
+<h2>4. Performance Metrics</h2>
+<div class="metric-grid">
+<div class="metric"><span>Rise Time (10–90%)</span><strong id="rise">--</strong></div>
+<div class="metric"><span>Overshoot</span><strong id="overshoot">--</strong></div>
+<div class="metric"><span>Settling Time (2%)</span><strong id="settling">--</strong></div>
+<div class="metric"><span>Steady-State Error</span><strong id="error">--</strong></div>
+</div>
+</div>
+
+<div class="card">
+<h2>5. System Output</h2>
+<div id="outputPlot" class="plot"></div>
+</div>
+
+<div class="card">
+<h2>6. Control Signal u(t)</h2>
+<div id="controlPlot" class="plot"></div>
+</div>
+
+<div class="card">
+<h2>7. Predict, then Check</h2>
+<p>Before running the simulation, predict what will happen when you change the PID gains.</p>
+
+<label>What happens to steady-state error when Ki increases?</label>
+<select id="prediction">
+<option value="">Choose your prediction</option>
+<option value="increase">It increases</option>
+<option value="decrease">It decreases</option>
+<option value="same">It stays the same</option>
+</select>
+
+<button onclick="checkPrediction()">Check My Prediction</button>
+<div id="predictionResult" class="status hidden"></div>
+</div>
+
+<div class="card">
+<h2>8. Validation Check</h2>
+<p>For K = 1, τ = 1 s, Kp = 9, Ki = 0, Kd = 0:</p>
+<ul>
+<li>Closed-loop time constant = 0.1 s</li>
+<li>Steady-state error = 10%</li>
+<li>Final output = 0.9 for a unit step</li>
+</ul>
+<button onclick="runValidation()">Run Validation</button>
+<div id="validationResult" class="status hidden"></div>
+</div>
+
+</div>
+
+<script>
+function showValue(inputId, outputId) {
+  document.getElementById(outputId).textContent =
+    Number(document.getElementById(inputId).value).toFixed(2);
+}
+
+function updatePlantFields() {
+  const second = document.getElementById("plantType").value === "second";
+  document.getElementById("firstFields").classList.toggle("hidden", second);
+  document.getElementById("secondFields").classList.toggle("hidden", !second);
+}
+
+function simulate() {
+  const type = document.getElementById("plantType").value;
+  const kp = Number(document.getElementById("kp").value);
+  const ki = Number(document.getElementById("ki").value);
+  const kd = Number(document.getElementById("kd").value);
+  const sp = Number(document.getElementById("setpoint").value);
+  const limit = Math.max(0.1, Math.abs(Number(document.getElementById("limit").value)) || 100);
+
+  const dt = 0.001;
+  const duration = 10;
+  const steps = Math.floor(duration / dt);
+
+  let y = 0;
+  let velocity = 0;
+  let integral = 0;
+  let previousError = sp;
+  let previousY = 0;
+
+  const time = [];
+  const output = [];
+  const reference = [];
+  const control = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i * dt;
+    const error = sp - y;
+
+    // Derivative on measurement avoids derivative kick at the setpoint step.
+    const derivative = -(y - previousY) / dt;
+    const rawU = kp * error + ki * integral + kd * derivative;
+    const u = Math.max(-limit, Math.min(limit, rawU));
+
+    // Conditional integration: avoid increasing saturation in the wrong direction.
+    if (Math.abs(rawU - u) < 1e-10 ||
+        (rawU > limit && error < 0) ||
+        (rawU < -limit && error > 0)) {
+      integral += error * dt;
+    }
+
+    time.push(t);
+    output.push(y);
+    reference.push(sp);
+    control.push(u);
+
+    previousY = y;
+    previousError = error;
+
+    if (type === "first") {
+      const K = Number(document.getElementById("K").value);
+      const tau = Number(document.getElementById("tau").value);
+      const dydt = (K * u - y) / tau;
+      y += dydt * dt;
+    } else {
+      const m = Number(document.getElementById("mass").value);
+      const b = Number(document.getElementById("damping").value);
+      const k = Number(document.getElementById("spring").value);
+
+      const acceleration = (u - b * velocity - k * y) / m;
+      velocity += acceleration * dt;
+      y += velocity * dt;
+    }
+  }
+
+  drawPlots(time, output, reference, control, limit);
+  calculateMetrics(time, output, sp);
+}
+
+function drawPlots(time, output, reference, control, limit) {
+  Plotly.react("outputPlot", [
+    {x:time, y:reference, name:"Setpoint", mode:"lines",
+     line:{color:"#f59e0b", dash:"dash"}},
+    {x:time, y:output, name:"Plant Output", mode:"lines",
+     line:{color:"#38bdf8", width:2}}
+  ], {
+    paper_bgcolor:"#172033", plot_bgcolor:"#172033",
+    font:{color:"#e5e7eb"},
+    xaxis:{title:"Time (s)", gridcolor:"#334155"},
+    yaxis:{title:"Output", gridcolor:"#334155"},
+    margin:{t:20,l:55,r:20,b:50},
+    legend:{orientation:"h"}
+  }, {responsive:true});
+
+  Plotly.react("controlPlot", [
+    {x:time, y:control, name:"Control Signal u(t)", mode:"lines",
+     line:{color:"#a78bfa",width:2}},
+    {x:time, y:time.map(()=>limit), name:"Upper Limit",
+     mode:"lines", line:{color:"#ef4444",dash:"dash"}},
+    {x:time, y:time.map(()=>-limit), name:"Lower Limit",
+     mode:"lines", line:{color:"#ef4444",dash:"dash"}}
+  ], {
+    paper_bgcolor:"#172033", plot_bgcolor:"#172033",
+    font:{color:"#e5e7eb"},
+    xaxis:{title:"Time (s)",gridcolor:"#334155"},
+    yaxis:{title:"Control Signal",gridcolor:"#334155"},
+    margin:{t:20,l:55,r:20,b:50},
+    legend:{orientation:"h"}
+  }, {responsive:true});
+}
+
+function calculateMetrics(time, output, sp) {
+  const finalValue = output[output.length-1];
+  const target10 = 0.1 * finalValue;
+  const target90 = 0.9 * finalValue;
+
+  let t10 = null;
+  let t90 = null;
+
+  for (let i=0;i<output.length;i++) {
+    if (t10 === null && output[i] >= target10) t10 = time[i];
+    if (t90 === null && output[i] >= target90) t90 = time[i];
+  }
+
+  const rise = (t10 !== null && t90 !== null) ? t90-t10 : null;
+  const peak = Math.max(...output);
+  const overshoot = Math.max(0, (peak-finalValue)/Math.max(Math.abs(finalValue),1e-9)*100);
+
+  const band = 0.02 * Math.max(Math.abs(finalValue),1e-9);
+  let lastOutside = -1;
+
+  for (let i=0;i<output.length;i++) {
+    if (Math.abs(output[i]-finalValue) > band) lastOutside=i;
+  }
+
+  const settling = lastOutside < output.length-1
+    ? time[Math.min(lastOutside+1,time.length-1)] : null;
+
+  const steadyError = Math.abs(sp-finalValue)/Math.max(Math.abs(sp),1e-9)*100;
+
+  document.getElementById("rise").textContent =
+    rise === null ? "Not reached" : rise.toFixed(3)+" s";
+  document.getElementById("overshoot").textContent = overshoot.toFixed(2)+"%";
+  document.getElementById("settling").textContent =
+    settling === null ? "Not settled" : settling.toFixed(3)+" s";
+  document.getElementById("error").textContent = steadyError.toFixed(2)+"%";
+}
+
+function resetValidation() {
+  document.getElementById("plantType").value = "first";
+  updatePlantFields();
+
+  const values = {
+    K:1, tau:1, kp:9, ki:0, kd:0, setpoint:1
+  };
+
+  for (const id in values) {
+    document.getElementById(id).value = values[id];
+  }
+
+  showValue("K","kVal");
+  showValue("tau","tauVal");
+  showValue("kp","kpVal");
+  showValue("ki","kiVal");
+  showValue("kd","kdVal");
+  showValue("setpoint","spVal");
+
+  simulate();
+}
+
+function runValidation() {
+  resetValidation();
+
+  const result = document.getElementById("validationResult");
+  result.classList.remove("hidden");
+
+  const expectedTau = 1/(1+1*9);
+  const expectedError = 1/(1+1*9)*100;
+  const expectedOutput = 1-expectedError/100;
+
+  result.innerHTML =
+    "<b>Expected theoretical results:</b><br>"+
+    "Closed-loop time constant: "+expectedTau.toFixed(3)+" s<br>"+
+    "Steady-state error: "+expectedError.toFixed(1)+"%<br>"+
+    "Final output: "+expectedOutput.toFixed(3)+"<br><br>"+
+    "Compare these values with the simulation metrics above.";
+}
+
+function checkPrediction() {
+  const answer = document.getElementById("prediction").value;
+  const result = document.getElementById("predictionResult");
+  result.classList.remove("hidden");
+
+  if (answer === "decrease") {
+    result.innerHTML = "<b>Correct!</b> Increasing Ki adds integral action. It accumulates error and can eliminate steady-state error for a stable system.";
+    result.style.color = "#4ade80";
+  } else if (answer === "") {
+    result.textContent = "Please choose a prediction first.";
+    result.style.color = "#fbbf24";
+  } else {
+    result.innerHTML = "<b>Not quite.</b> Integral action accumulates the error over time and works to remove steady-state error.";
+    result.style.color = "#f87171";
+  }
+}
+
+simulate();
+</script>
+</body>
+</html>
