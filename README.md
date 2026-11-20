@@ -3,7 +3,7 @@ Project Description
 This project is an interactive website that helps students understand the dynamic characteristics of sensors using sliders and graphs.
 
 Team Members
-- Member 1: Aws Abdallah 1230619 (Modules 1 and 2)
+- Member 1: Aws Abdallah 1230619 (Modules 1 and 2) 
 - Member 2: Musab Farhat 1230093 (Modules 1 and 2)
 - Member 3: Mohammad Abdallah 1230096 (Modules 3 and 4)
 - Member 4: Ahmad Bazzar 1230575 (Modules 3 and 4)
